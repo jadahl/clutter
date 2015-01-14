@@ -782,6 +782,8 @@ typedef enum { /*< prefix=CLUTTER >*/
   CLUTTER_TOUCH_UPDATE,
   CLUTTER_TOUCH_END,
   CLUTTER_TOUCH_CANCEL,
+  CLUTTER_PROXIMITY_IN,
+  CLUTTER_PROXIMITY_OUT,
 
   CLUTTER_EVENT_LAST            /* helper */
 } ClutterEventType;

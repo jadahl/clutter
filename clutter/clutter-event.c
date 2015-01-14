@@ -411,6 +411,8 @@ clutter_event_get_position (const ClutterEvent *event,
     case CLUTTER_CLIENT_MESSAGE:
     case CLUTTER_DELETE:
     case CLUTTER_EVENT_LAST:
+    case CLUTTER_PROXIMITY_IN:
+    case CLUTTER_PROXIMITY_OUT:
       clutter_point_init (position, 0.f, 0.f);
       break;
 
@@ -469,6 +471,8 @@ clutter_event_set_coords (ClutterEvent *event,
     case CLUTTER_CLIENT_MESSAGE:
     case CLUTTER_DELETE:
     case CLUTTER_EVENT_LAST:
+    case CLUTTER_PROXIMITY_IN:
+    case CLUTTER_PROXIMITY_OUT:
       break;
 
     case CLUTTER_ENTER:
@@ -1099,6 +1103,11 @@ clutter_event_set_device (ClutterEvent       *event,
     case CLUTTER_KEY_RELEASE:
       event->key.device = device;
       break;
+
+    case CLUTTER_PROXIMITY_IN:
+    case CLUTTER_PROXIMITY_OUT:
+      event->proximity.device = device;
+      break;
     }
 }
 
@@ -1172,6 +1181,11 @@ clutter_event_get_device (const ClutterEvent *event)
     case CLUTTER_KEY_PRESS:
     case CLUTTER_KEY_RELEASE:
       device = event->key.device;
+      break;
+
+    case CLUTTER_PROXIMITY_IN:
+    case CLUTTER_PROXIMITY_OUT:
+      device = event->proximity.device;
       break;
     }
 
@@ -1635,6 +1649,8 @@ clutter_event_get_axes (const ClutterEvent *event,
     case CLUTTER_KEY_PRESS:
     case CLUTTER_KEY_RELEASE:
     case CLUTTER_EVENT_LAST:
+    case CLUTTER_PROXIMITY_IN:
+    case CLUTTER_PROXIMITY_OUT:
       break;
 
     case CLUTTER_SCROLL:
