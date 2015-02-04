@@ -1126,6 +1126,8 @@ clutter_event_get_position
 clutter_event_has_control_modifier
 clutter_event_has_shift_modifier
 clutter_event_is_pointer_emulated
+clutter_event_set_device_tool
+clutter_event_get_device_tool
 
 <SUBSECTION>
 clutter_event_get
