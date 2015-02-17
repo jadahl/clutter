@@ -88,6 +88,20 @@ struct _ClutterStageWindowIface
   void              (* set_scale_factor)        (ClutterStageWindow *stage_window,
                                                  int                 factor);
   int               (* get_scale_factor)        (ClutterStageWindow *stage_window);
+  void              (* set_outputs)             (ClutterStageWindow *stage_window,
+                                                 ClutterStageOutput *outputs,
+                                                 gint                num_outputs);
+  ClutterStageOutput *(*get_outputs)            (ClutterStageWindow *stage_window,
+                                                 gint               *num_outputs);
+  CoglFramebuffer  *(* create_framebuffer)      (ClutterStageWindow *stage_window,
+                                                 ClutterStageOutput *output);
+  CoglFrameClosure *(* set_frame_callback)      (ClutterStageWindow *stage_window,
+                                                 CoglFrameCallback   callback,
+                                                 gpointer            user_data);
+  void              (* remove_frame_callback)   (ClutterStageWindow *stage_window,
+                                                 CoglFrameClosure   *closure);
+  void              (* swap_buffers)            (ClutterStageWindow *stage_window);
+  int64_t           (* get_frame_counter)       (ClutterStageWindow *stage_window);
 };
 
 GType _clutter_stage_window_get_type (void) G_GNUC_CONST;
@@ -144,6 +158,28 @@ gboolean          _clutter_stage_window_can_clip_redraws        (ClutterStageWin
 void              _clutter_stage_window_set_scale_factor        (ClutterStageWindow *window,
                                                                  int                 factor);
 int               _clutter_stage_window_get_scale_factor        (ClutterStageWindow *window);
+
+void              _clutter_stage_window_set_outputs             (ClutterStageWindow *window,
+                                                                 ClutterStageOutput *outputs,
+                                                                 gint                num_outputs);
+
+ClutterStageOutput *_clutter_stage_window_get_outputs           (ClutterStageWindow *window,
+                                                                 gint               *num_outputs);
+
+CoglFramebuffer  *_clutter_stage_window_create_framebuffer      (ClutterStageWindow *window,
+                                                                 ClutterStageOutput *output);
+
+CoglFrameClosure *_clutter_stage_window_set_frame_callback      (ClutterStageWindow *window,
+                                                                 CoglFrameCallback   callback,
+                                                                 gpointer            user_data);
+
+void              _clutter_stage_window_remove_frame_callback   (ClutterStageWindow *stage_winow,
+                                                                 CoglFrameClosure   *closure);
+
+void              _clutter_stage_window_swap_buffers            (ClutterStageWindow *window);
+
+int64_t           _clutter_stage_window_get_frame_counter       (ClutterStageWindow *window);
+
 
 G_END_DECLS
 

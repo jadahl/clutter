@@ -28,6 +28,8 @@
 #ifndef __CLUTTER_STAGE_H__
 #define __CLUTTER_STAGE_H__
 
+#include <cogl/cogl.h>
+
 #include <clutter/clutter-types.h>
 #include <clutter/clutter-group.h>
 
@@ -133,6 +135,16 @@ struct _ClutterFog
 {
   gfloat z_near;
   gfloat z_far;
+};
+
+struct _ClutterStageOutput
+{
+  gint x;
+  gint y;
+  gint width;
+  gint height;
+  gint scale;
+  CoglFramebuffer *framebuffer;
 };
 
 CLUTTER_AVAILABLE_IN_ALL
@@ -244,6 +256,19 @@ void            clutter_stage_set_sync_delay                    (ClutterStage   
 CLUTTER_AVAILABLE_IN_1_14
 void            clutter_stage_skip_sync_delay                   (ClutterStage          *stage);
 #endif
+
+CLUTTER_AVAILABLE_IN_ALL
+void            clutter_stage_set_outputs                       (ClutterStage          *stage,
+                                                                 ClutterStageOutput    *outputs,
+                                                                 gint                   num_outputs);
+
+CLUTTER_AVAILABLE_IN_ALL
+CoglFrameClosure *clutter_stage_add_frame_callback              (ClutterStage          *stage,
+                                                                 CoglFrameCallback      callback,
+                                                                 gpointer               user_data);
+
+CLUTTER_AVAILABLE_IN_ALL
+int64_t           clutter_stage_get_frame_counter               (ClutterStage          *stage);
 
 G_END_DECLS
 

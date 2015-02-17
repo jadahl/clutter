@@ -23,6 +23,8 @@ G_BEGIN_DECLS
 typedef struct _ClutterStageCogl         ClutterStageCogl;
 typedef struct _ClutterStageCoglClass    ClutterStageCoglClass;
 
+typedef struct _ClutterStageCoglOutput   ClutterStageCoglOutput;
+
 struct _ClutterStageCogl
 {
   GObject parent_instance;
@@ -32,8 +34,6 @@ struct _ClutterStageCogl
 
   /* back pointer to the backend */
   ClutterBackend *backend;
-
-  CoglOnscreen *onscreen;
 
   gint64 last_presentation_time;
   float refresh_rate;
@@ -62,6 +62,16 @@ struct _ClutterStageCogl
 #define DAMAGE_HISTORY(x) ((x) & (DAMAGE_HISTORY_MAX - 1))
   cairo_rectangle_int_t damage_history[DAMAGE_HISTORY_MAX];
   unsigned damage_index;
+
+  ClutterStageCoglOutput *outputs;
+  gint num_outputs;
+};
+
+typedef struct _ClutterStageCoglWindowHandle ClutterStageCoglWindowHandle;
+
+struct _ClutterStageCoglOutput
+{
+  ClutterStageOutput base;
 };
 
 struct _ClutterStageCoglClass

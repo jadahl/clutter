@@ -360,3 +360,81 @@ _clutter_stage_window_get_scale_factor (ClutterStageWindow *window)
 
   return 1;
 }
+
+void
+_clutter_stage_window_set_outputs (ClutterStageWindow *window,
+                                   ClutterStageOutput *outputs,
+                                   gint                num_outputs)
+{
+  ClutterStageWindowIface *iface = CLUTTER_STAGE_WINDOW_GET_IFACE (window);
+
+  if (iface->set_outputs)
+    iface->set_outputs (window, outputs, num_outputs);
+}
+
+ClutterStageOutput *
+_clutter_stage_window_get_outputs (ClutterStageWindow *window,
+                                   gint               *num_outputs)
+{
+  ClutterStageWindowIface *iface = CLUTTER_STAGE_WINDOW_GET_IFACE (window);
+
+  if (iface->get_outputs)
+    return iface->get_outputs (window, num_outputs);
+  else
+    return NULL;
+}
+
+CoglFramebuffer *
+_clutter_stage_window_create_framebuffer (ClutterStageWindow *window,
+                                          ClutterStageOutput *output)
+{
+  ClutterStageWindowIface *iface = CLUTTER_STAGE_WINDOW_GET_IFACE (window);
+
+  if (iface->create_framebuffer)
+    return iface->create_framebuffer (window, output);
+  else
+    return NULL;
+}
+
+CoglFrameClosure *
+_clutter_stage_window_set_frame_callback (ClutterStageWindow *window,
+                                          CoglFrameCallback   callback,
+                                          gpointer            user_data)
+{
+  ClutterStageWindowIface *iface = CLUTTER_STAGE_WINDOW_GET_IFACE (window);
+
+  if (iface->set_frame_callback)
+    return iface->set_frame_callback (window, callback, user_data);
+  else
+    return NULL;
+}
+
+void
+_clutter_stage_window_remove_frame_callback (ClutterStageWindow *window,
+                                             CoglFrameClosure   *closure)
+{
+  ClutterStageWindowIface *iface = CLUTTER_STAGE_WINDOW_GET_IFACE (window);
+
+  if (iface->remove_frame_callback)
+    iface->remove_frame_callback (window, closure);
+}
+
+void
+_clutter_stage_window_swap_buffers (ClutterStageWindow *window)
+{
+  ClutterStageWindowIface *iface = CLUTTER_STAGE_WINDOW_GET_IFACE (window);
+
+  if (iface->swap_buffers)
+    iface->swap_buffers (window);
+}
+
+int64_t
+_clutter_stage_window_get_frame_counter (ClutterStageWindow *window)
+{
+  ClutterStageWindowIface *iface = CLUTTER_STAGE_WINDOW_GET_IFACE (window);
+
+  if (iface->get_frame_counter)
+    return iface->get_frame_counter (window);
+  else
+    return 0;
+}

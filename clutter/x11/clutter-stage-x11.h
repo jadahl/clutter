@@ -42,6 +42,8 @@ G_BEGIN_DECLS
 typedef struct _ClutterStageX11         ClutterStageX11;
 typedef struct _ClutterStageX11Class    ClutterStageX11Class;
 
+typedef struct _ClutterStageX11Output   ClutterStageX11Output;
+
 typedef enum
 {
   STAGE_X11_WITHDRAWN = 1 << 1
@@ -51,9 +53,12 @@ struct _ClutterStageX11
 {
   ClutterStageCogl parent_instance;
 
+  CoglOnscreen *onscreen;
   Window xwin;
   gint xwin_width;
   gint xwin_height; /* FIXME target_width / height */
+
+  GList *outputs;
 
   gchar *title;
 

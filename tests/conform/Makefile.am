@@ -7,6 +7,7 @@ AM_CPPFLAGS = \
 	-DG_LOG_DOMAIN=\"Clutter-Conform\"	\
 	-I$(top_srcdir) 			\
 	-I$(top_builddir)			\
+	-DCOGL_ENABLE_EXPERIMENTAL_API		\
 	-DCOGL_DISABLE_DEPRECATION_WARNINGS	\
 	$(CLUTTER_DEPRECATED_CFLAGS)		\
 	$(CLUTTER_DEBUG_CFLAGS)

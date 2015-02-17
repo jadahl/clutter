@@ -48,6 +48,12 @@
 
 #define STAGE_X11_IS_MAPPED(s)  ((((ClutterStageX11 *) (s))->wm_state & STAGE_X11_WITHDRAWN) == 0)
 
+struct _ClutterStageX11Output
+{
+  CoglTexture *texture;
+  ClutterStageCoglOutput *output;
+};
+
 static ClutterStageWindowIface *clutter_stage_window_parent_iface = NULL;
 
 static void clutter_stage_window_iface_init     (ClutterStageWindowIface     *iface);
@@ -199,6 +205,43 @@ static void
 clutter_stage_x11_get_geometry (ClutterStageWindow    *stage_window,
                                 cairo_rectangle_int_t *geometry)
 {
+#if 1
+  ClutterStageX11 *stage_x11 = CLUTTER_STAGE_X11 (stage_window);
+  ClutterStageCogl *stage_cogl = CLUTTER_STAGE_COGL (stage_x11);
+  int i;
+  cairo_region_t *region;
+  cairo_rectangle_int_t extents;
+
+  region = cairo_region_create ();
+  for (i = 0; i < stage_cogl->num_outputs; i++)
+    {
+      ClutterStageOutput *output = &stage_cogl->outputs[i].base;
+
+      cairo_region_union_rectangle (region, &(cairo_rectangle_int_t) {
+                                      .x = output->x,
+                                      .y = output->y,
+                                      .width = output->width,
+                                      .height = output->height,
+                                    });
+    }
+
+  cairo_region_get_extents (region, &extents);
+  cairo_region_destroy (region);
+
+  g_assert (extents.x == 0 && extents.y == 0);
+
+  if (extents.width == 0 || extents.height == 0)
+    {
+      extents.width = 640;
+      extents.height = 480;
+    }
+
+  CLUTTER_NOTE (BACKEND, "Stage size: %dx%d+%d+%d",
+                extents.x, extents.y,
+                extents.width, extents.height);
+
+  *geometry = extents;
+#else
   ClutterStageX11 *stage_x11 = CLUTTER_STAGE_X11 (stage_window);
   ClutterStageCogl *stage_cogl = CLUTTER_STAGE_COGL (stage_x11);
   ClutterBackendX11 *backend_x11 = CLUTTER_BACKEND_X11 (stage_cogl->backend);
@@ -224,6 +267,7 @@ clutter_stage_x11_get_geometry (ClutterStageWindow    *stage_window,
 
   geometry->width = stage_x11->xwin_width / stage_x11->scale_factor;
   geometry->height = stage_x11->xwin_height / stage_x11->scale_factor;
+#endif
 }
 
 static void
@@ -404,6 +448,7 @@ static void
 clutter_stage_x11_unrealize (ClutterStageWindow *stage_window)
 {
   ClutterStageX11 *stage_x11 = CLUTTER_STAGE_X11 (stage_window);
+  GList *it;
 
   if (clutter_stages_by_xid != NULL)
     {
@@ -416,6 +461,24 @@ clutter_stage_x11_unrealize (ClutterStageWindow *stage_window)
     }
 
   clutter_stage_window_parent_iface->unrealize (stage_window);
+
+  for (it = stage_x11->outputs; it; it = it->next)
+    {
+      ClutterStageX11Output *x11_output = it->data;
+
+      cogl_object_unref (x11_output->texture);
+      g_free (x11_output);
+    }
+  g_list_free (stage_x11->outputs);
+  stage_x11->outputs = NULL;
+
+  /* Need to unref the onscreen framebuffer since there might still be frame
+   * callback closures that needs to be removed by ClutterStageCogl. */
+  if (stage_x11->onscreen != NULL)
+    {
+      cogl_object_unref (stage_x11->onscreen);
+      stage_x11->onscreen = NULL;
+    }
 }
 
 void
@@ -580,6 +643,7 @@ clutter_stage_x11_realize (ClutterStageWindow *stage_window)
   ClutterBackend *backend = CLUTTER_BACKEND (stage_cogl->backend);
   ClutterBackendX11 *backend_x11 = CLUTTER_BACKEND_X11 (backend);
   ClutterDeviceManager *device_manager;
+  GError *error = NULL;
   gfloat width, height;
 
   clutter_actor_get_size (CLUTTER_ACTOR (stage_cogl->wrapper), &width, &height);
@@ -593,7 +657,7 @@ clutter_stage_x11_realize (ClutterStageWindow *stage_window)
                 width, height,
                 stage_x11->scale_factor);
 
-  stage_cogl->onscreen = cogl_onscreen_new (backend->cogl_context, width, height);
+  stage_x11->onscreen = cogl_onscreen_new (backend->cogl_context, width, height);
 
   /* We just created a window of the size of the actor. No need to fix
      the size of the stage, just update it. */
@@ -602,11 +666,19 @@ clutter_stage_x11_realize (ClutterStageWindow *stage_window)
 
   if (stage_x11->xwin != None)
     {
-      cogl_x11_onscreen_set_foreign_window_xid (stage_cogl->onscreen,
+      cogl_x11_onscreen_set_foreign_window_xid (stage_x11->onscreen,
                                                 stage_x11->xwin,
                                                 _clutter_stage_x11_update_foreign_event_mask,
                                                 stage_x11);
 
+    }
+
+  if (!cogl_framebuffer_allocate (stage_x11->onscreen, &error))
+    {
+      g_warning ("Failed to allocate stage: %s", error->message);
+      g_error_free (error);
+      cogl_object_unref (stage_x11->onscreen);
+      abort();
     }
 
   /* Chain to the parent class now. ClutterStageCogl will call cogl_framebuffer_allocate,
@@ -616,7 +688,7 @@ clutter_stage_x11_realize (ClutterStageWindow *stage_window)
     return FALSE;
 
   if (stage_x11->xwin == None)
-    stage_x11->xwin = cogl_x11_onscreen_get_window_xid (stage_cogl->onscreen);
+    stage_x11->xwin = cogl_x11_onscreen_get_window_xid (stage_x11->onscreen);
 
   if (clutter_stages_by_xid == NULL)
     clutter_stages_by_xid = g_hash_table_new (NULL, NULL);
@@ -856,6 +928,102 @@ clutter_stage_x11_get_scale_factor (ClutterStageWindow *stage_window)
   return stage_x11->scale_factor;
 }
 
+static CoglFramebuffer *
+clutter_stage_x11_create_framebuffer (ClutterStageWindow *stage_window,
+                                      ClutterStageOutput *output)
+{
+  ClutterStageX11 *stage_x11 = CLUTTER_STAGE_X11 (stage_window);
+  ClutterStageCogl *stage_cogl = CLUTTER_STAGE_COGL (stage_window);
+  ClutterBackend *backend = CLUTTER_BACKEND (stage_cogl->backend);
+  CoglFramebuffer *framebuffer;
+  CoglTexture *texture;
+  ClutterStageX11Output *x11_output;
+
+  x11_output = g_new0 (ClutterStageX11Output, 1);
+  stage_x11->outputs = g_list_append (stage_x11->outputs, x11_output);
+
+  texture = cogl_texture_2d_new_with_size (backend->cogl_context,
+                                           output->width * output->scale,
+                                           output->height * output->scale);
+  framebuffer = cogl_offscreen_new_with_texture (texture);
+
+  x11_output->output = (ClutterStageCoglOutput*)output;
+  x11_output->texture = texture;
+
+  return framebuffer;
+}
+
+static CoglFrameClosure *
+clutter_stage_x11_set_frame_callback (ClutterStageWindow *stage_window,
+                                      CoglFrameCallback   callback,
+                                      gpointer            user_data)
+{
+  ClutterStageX11 *stage_x11 = CLUTTER_STAGE_X11 (stage_window);
+
+  cogl_onscreen_set_swap_throttled (stage_x11->onscreen,
+                                    _clutter_get_sync_to_vblank ());
+
+  return cogl_onscreen_add_frame_callback (stage_x11->onscreen,
+                                           callback,
+                                           user_data,
+                                           NULL);
+}
+
+static void
+clutter_stage_x11_remove_frame_callback (ClutterStageWindow *stage_window,
+                                         CoglFrameClosure   *closure)
+{
+  ClutterStageX11 *stage_x11 = CLUTTER_STAGE_X11 (stage_window);
+
+  cogl_onscreen_remove_frame_callback (stage_x11->onscreen, closure);
+}
+
+static void
+clutter_stage_x11_swap_buffers (ClutterStageWindow *stage_window)
+{
+  ClutterStageCogl *stage_cogl = CLUTTER_STAGE_COGL (stage_window);
+  ClutterStageX11 *stage_x11 = CLUTTER_STAGE_X11 (stage_window);
+  ClutterBackend *backend = CLUTTER_BACKEND (stage_cogl->backend);
+  GList *it;
+
+  static CoglPipeline *pipeline = NULL;
+  if (pipeline == NULL)
+    {
+      pipeline = cogl_pipeline_new (backend->cogl_context);
+    }
+
+  cogl_framebuffer_clear4f (stage_x11->onscreen,
+                            COGL_BUFFER_BIT_COLOR,
+                            0.5f, 0.9f, 0.4f, 1.0f);
+
+  for (it = stage_x11->outputs; it ; it = it->next)
+    {
+      ClutterStageX11Output *x11_output = it->data;
+      ClutterStageOutput *output = &x11_output->output->base;
+
+
+      cogl_framebuffer_set_viewport (stage_x11->onscreen,
+                                     output->x,
+                                     output->y,
+                                     output->width,
+                                     output->height);
+      cogl_pipeline_set_layer_texture (pipeline, 0, x11_output->texture);
+      cogl_framebuffer_draw_rectangle (stage_x11->onscreen,
+                                       pipeline,
+                                       -1, 1, 1, -1);
+    }
+
+  cogl_onscreen_swap_buffers (stage_x11->onscreen);
+}
+
+static int64_t
+clutter_stage_x11_get_frame_counter (ClutterStageWindow *stage_window)
+{
+  ClutterStageX11 *stage_x11 = CLUTTER_STAGE_X11 (stage_window);
+
+  return cogl_onscreen_get_frame_counter (stage_x11->onscreen);
+}
+
 static void
 clutter_stage_x11_finalize (GObject *gobject)
 {
@@ -930,6 +1098,11 @@ clutter_stage_window_iface_init (ClutterStageWindowIface *iface)
   iface->can_clip_redraws = clutter_stage_x11_can_clip_redraws;
   iface->set_scale_factor = clutter_stage_x11_set_scale_factor;
   iface->get_scale_factor = clutter_stage_x11_get_scale_factor;
+  iface->create_framebuffer = clutter_stage_x11_create_framebuffer;
+  iface->set_frame_callback = clutter_stage_x11_set_frame_callback;
+  iface->remove_frame_callback = clutter_stage_x11_remove_frame_callback;
+  iface->swap_buffers = clutter_stage_x11_swap_buffers;
+  iface->get_frame_counter = clutter_stage_x11_get_frame_counter;
 }
 
 static inline void
